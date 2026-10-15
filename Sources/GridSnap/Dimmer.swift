@@ -105,7 +105,9 @@ final class Dimmer {
             // Deliberately not on all Spaces: each overlay lives on the Space it was
             // ordered in, so it slides away with that Space instead of covering the
             // incoming one. It's re-ordered onto the new Space after each switch.
-            window.collectionBehavior = [.moveToActiveSpace, .ignoresCycle, .fullScreenAuxiliary]
+            // `.transient` keeps it out of Mission Control, where it would otherwise
+            // show up as a large dark window.
+            window.collectionBehavior = [.moveToActiveSpace, .transient, .ignoresCycle, .fullScreenAuxiliary]
             window.alphaValue = visible ? opacity : 0
             window.setFrame(screen.frame, display: false)
             return Overlay(window: window, displayID: displayID)
