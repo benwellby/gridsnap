@@ -34,6 +34,9 @@ step-by-step install guide.
 - **A grid you define:** set any number of columns and rows from 1 to 16.
 - **Unlimited shortcuts:** each one moves and resizes the focused window to a rectangle of
   grid cells you choose.
+- **Layouts survive grid changes:** shortcuts remember their area as a proportion of the
+  screen, so changing the grid snaps them to the nearest cells without distorting them.
+  Changing the grid back restores them exactly.
 - **Per-shortcut grids:** give an individual shortcut its own grid (e.g. thirds for one,
   quarters for another) without changing the global grid.
 - **Multi-display aware:** windows snap within the screen they're on, avoiding the menu bar
@@ -101,6 +104,9 @@ step-by-step install guide.
 ### How it works
 
 **Window snapping**
+- Each shortcut stores its area as fractions of the screen (`UnitRect`). When it's used,
+  shown or edited, the area is snapped to whole cells of its grid. Exact ties widen the
+  area, so centred layouts stay centred.
 - The focused window is found through the Accessibility API (`AXUIElement`, `kAXFocusedWindowAttribute`).
 - The target frame is calculated from the display's `visibleFrame`, which excludes the menu bar and Dock.
 - Cell edges are rounded, rather than cell sizes, so adjacent windows tile without gaps.

@@ -101,11 +101,104 @@ struct GridSize: Codable, Equatable, Hashable {
     var rows: Int
 }
 
+/// A rectangle as fractions of the screen (0–1, origin top-left).
+///
+/// Shortcuts store this rather than cell numbers so their layout survives grid
+/// size changes: it's snapped to whichever grid is in use, and changing the grid
+/// back restores the exact original.
+struct UnitRect: Codable, Equatable, Hashable {
+    var x: Double
+    var y: Double
+    var width: Double
+    var height: Double
+
+    init(x: Double, y: Double, width: Double, height: Double) {
+        self.x = x
+        self.y = y
+        self.width = width
+        self.height = height
+    }
+
+    init(_ area: GridArea, in grid: GridSize) {
+        let columns = Double(grid.columns), rows = Double(grid.rows)
+        self.init(
+            x: Double(area.col) / columns,
+            y: Double(area.row) / rows,
+            width: Double(area.colSpan) / columns,
+            height: Double(area.rowSpan) / rows
+        )
+    }
+
+    /// The nearest whole cells on `grid`, always at least one cell.
+    /// Exact ties widen the area (start rounds down, end rounds up), so a
+    /// centred area stays centred.
+    func snapped(to grid: GridSize) -> GridArea {
+        func snap(_ start: Double, _ length: Double, _ count: Int) -> (start: Int, span: Int) {
+            let n = Double(count)
+            let first = min(max(Int((start * n - 0.5 - 1e-9).rounded(.up)), 0), count - 1)
+            let end = min(max(Int(((start + length) * n + 0.5 + 1e-9).rounded(.down)), first + 1), count)
+            return (first, end - first)
+        }
+        let cols = snap(x, width, grid.columns)
+        let rows = snap(y, height, grid.rows)
+        return GridArea(col: cols.start, row: rows.start, colSpan: cols.span, rowSpan: rows.span)
+    }
+
+    static let full = UnitRect(x: 0, y: 0, width: 1, height: 1)
+}
+
 struct Shortcut: Codable, Identifiable, Equatable {
     var id = UUID()
     var name: String
-    var area: GridArea
+    /// Where the window goes, independent of grid size.
+    var region: UnitRect
     var hotKey: HotKey?
     /// Overrides the global grid for this shortcut when set.
     var grid: GridSize?
+    /// Cell numbers from saves made before `region` existed. The store converts
+    /// these on load (it knows the grid they referred to); never written back.
+    var legacyArea: GridArea?
+
+    /// The region as cells of `grid`, for editing. Setting it stores the cells'
+    /// exact proportions.
+    func area(in grid: GridSize) -> GridArea { region.snapped(to: grid) }
+
+    mutating func setArea(_ area: GridArea, in grid: GridSize) {
+        region = UnitRect(area, in: grid)
+    }
+
+    init(name: String, region: UnitRect, hotKey: HotKey? = nil, grid: GridSize? = nil) {
+        self.name = name
+        self.region = region
+        self.hotKey = hotKey
+        self.grid = grid
+    }
+
+    private enum CodingKeys: String, CodingKey {
+        case id, name, region, hotKey, grid
+        case area // legacy
+    }
+
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        id = try c.decode(UUID.self, forKey: .id)
+        name = try c.decode(String.self, forKey: .name)
+        hotKey = try c.decodeIfPresent(HotKey.self, forKey: .hotKey)
+        grid = try c.decodeIfPresent(GridSize.self, forKey: .grid)
+        if let region = try c.decodeIfPresent(UnitRect.self, forKey: .region) {
+            self.region = region
+        } else {
+            region = .full
+            legacyArea = try c.decode(GridArea.self, forKey: .area)
+        }
+    }
+
+    func encode(to encoder: Encoder) throws {
+        var c = encoder.container(keyedBy: CodingKeys.self)
+        try c.encode(id, forKey: .id)
+        try c.encode(name, forKey: .name)
+        try c.encode(region, forKey: .region)
+        try c.encodeIfPresent(hotKey, forKey: .hotKey)
+        try c.encodeIfPresent(grid, forKey: .grid)
+    }
 }

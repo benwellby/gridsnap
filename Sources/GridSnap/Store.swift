@@ -41,6 +41,10 @@ final class Store: ObservableObject {
             dimEnabled = saved.dim?.enabled ?? false
             dimOpacity = saved.dim?.opacity ?? 0.5
             dimHotKey = saved.dim == nil ? HotKey.defaultDimToggle : saved.dim?.hotKey
+            if shortcuts.contains(where: { $0.legacyArea != nil }) {
+                shortcuts = shortcuts.map(convertLegacyArea)
+                save()
+            }
         } else {
             columns = 16
             rows = 16
@@ -88,14 +92,25 @@ final class Store: ObservableObject {
         shortcut.grid ?? GridSize(columns: columns, rows: rows)
     }
 
-    func clampedArea(_ shortcut: Shortcut) -> GridArea {
-        let grid = grid(for: shortcut)
-        return shortcut.area.clamped(columns: grid.columns, rows: grid.rows)
+    /// The shortcut's region snapped to the cells of its grid.
+    func area(for shortcut: Shortcut) -> GridArea {
+        shortcut.region.snapped(to: grid(for: shortcut))
     }
 
     func apply(_ shortcut: Shortcut) {
         let grid = grid(for: shortcut)
-        WindowMover.move(to: clampedArea(shortcut), columns: grid.columns, rows: grid.rows)
+        WindowMover.move(to: area(for: shortcut), columns: grid.columns, rows: grid.rows)
+    }
+
+    /// Older saves stored cell numbers relative to the shortcut's grid at the time.
+    /// Fit them to that grid, then store them as a proportional region.
+    private func convertLegacyArea(_ shortcut: Shortcut) -> Shortcut {
+        guard let legacy = shortcut.legacyArea else { return shortcut }
+        var converted = shortcut
+        let grid = grid(for: shortcut)
+        converted.region = UnitRect(legacy.clamped(columns: grid.columns, rows: grid.rows), in: grid)
+        converted.legacyArea = nil
+        return converted
     }
 
     func apply(id: UUID) {
@@ -103,27 +118,31 @@ final class Store: ObservableObject {
     }
 
     func addShortcut() {
-        shortcuts.append(Shortcut(name: "Move & Resize", area: GridArea(col: 0, row: 0, colSpan: 1, rowSpan: 1)))
+        let grid = GridSize(columns: columns, rows: rows)
+        shortcuts.append(Shortcut(name: "Move & Resize", region: UnitRect(GridArea(col: 0, row: 0, colSpan: 1, rowSpan: 1), in: grid)))
     }
 
     func delete(_ id: UUID) {
         shortcuts.removeAll { $0.id == id }
     }
 
-    // Defaults for a 16 × 16 grid, all on ⌥⌘. The corners and full screen use their
-    // own simpler grids; the centred layouts use the fine 16 × 16 grid.
+    // Defaults, all on ⌥⌘. The corners and full screen use their own simpler grids;
+    // the centred layouts use the fine 16 × 16 global grid.
     private static let defaultShortcuts: [Shortcut] = {
         func hk(_ code: UInt32, _ key: String) -> HotKey { HotKey(keyCode: code, modifiers: HotKey.optCmd, key: key) }
+        func cells(_ col: Int, _ row: Int, _ colSpan: Int, _ rowSpan: Int, of grid: GridSize) -> UnitRect {
+            UnitRect(GridArea(col: col, row: row, colSpan: colSpan, rowSpan: rowSpan), in: grid)
+        }
         let quarters = GridSize(columns: 2, rows: 2)
+        let fine = GridSize(columns: 16, rows: 16)
         return [
-            Shortcut(name: "Top Left", area: GridArea(col: 0, row: 0, colSpan: 1, rowSpan: 1), hotKey: hk(18, "1"), grid: quarters),
-            Shortcut(name: "Top Right", area: GridArea(col: 1, row: 0, colSpan: 1, rowSpan: 1), hotKey: hk(19, "2"), grid: quarters),
-            Shortcut(name: "Bottom Right", area: GridArea(col: 1, row: 1, colSpan: 1, rowSpan: 1), hotKey: hk(20, "3"), grid: quarters),
-            Shortcut(name: "Bottom Left", area: GridArea(col: 0, row: 1, colSpan: 1, rowSpan: 1), hotKey: hk(21, "4"), grid: quarters),
-            Shortcut(name: "Centre", area: GridArea(col: 3, row: 2, colSpan: 10, rowSpan: 12), hotKey: hk(23, "5")),
-            Shortcut(name: "Centre full", area: GridArea(col: 3, row: 0, colSpan: 10, rowSpan: 16), hotKey: hk(22, "6")),
-            Shortcut(name: "Full screen", area: GridArea(col: 0, row: 0, colSpan: 1, rowSpan: 1), hotKey: hk(14, "E"),
-                     grid: GridSize(columns: 1, rows: 1)),
+            Shortcut(name: "Top Left", region: cells(0, 0, 1, 1, of: quarters), hotKey: hk(18, "1"), grid: quarters),
+            Shortcut(name: "Top Right", region: cells(1, 0, 1, 1, of: quarters), hotKey: hk(19, "2"), grid: quarters),
+            Shortcut(name: "Bottom Right", region: cells(1, 1, 1, 1, of: quarters), hotKey: hk(20, "3"), grid: quarters),
+            Shortcut(name: "Bottom Left", region: cells(0, 1, 1, 1, of: quarters), hotKey: hk(21, "4"), grid: quarters),
+            Shortcut(name: "Centre", region: cells(3, 2, 10, 12, of: fine), hotKey: hk(23, "5")),
+            Shortcut(name: "Centre full", region: cells(3, 0, 10, 16, of: fine), hotKey: hk(22, "6")),
+            Shortcut(name: "Full screen", region: .full, hotKey: hk(14, "E"), grid: GridSize(columns: 1, rows: 1)),
         ]
     }()
 }

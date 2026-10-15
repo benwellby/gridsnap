@@ -128,9 +128,13 @@ private struct ShortcutRow: View {
     let onEnlarge: () -> Void
     let onDelete: () -> Void
 
+    private var area: Binding<GridArea> {
+        Binding(get: { shortcut.area(in: grid) }, set: { shortcut.setArea($0, in: grid) })
+    }
+
     var body: some View {
         HStack(spacing: 12) {
-            GridPicker(area: $shortcut.area, columns: grid.columns, rows: grid.rows, onTap: onEnlarge)
+            GridPicker(area: area, columns: grid.columns, rows: grid.rows, onTap: onEnlarge)
                 .frame(width: 96, height: 60)
                 .overlay(alignment: .topTrailing) {
                     if shortcut.grid != nil {
@@ -210,8 +214,13 @@ private struct EnlargedGridEditor: View {
     let warning: String?
     let onDone: () -> Void
 
-    private var columns: Int { shortcut.grid?.columns ?? globalGrid.columns }
-    private var rows: Int { shortcut.grid?.rows ?? globalGrid.rows }
+    private var grid: GridSize { shortcut.grid ?? globalGrid }
+    private var columns: Int { grid.columns }
+    private var rows: Int { grid.rows }
+
+    private var area: Binding<GridArea> {
+        Binding(get: { shortcut.area(in: grid) }, set: { shortcut.setArea($0, in: grid) })
+    }
 
     private var customGrid: Binding<Bool> {
         Binding(
@@ -234,7 +243,7 @@ private struct EnlargedGridEditor: View {
     }
 
     private var summary: String {
-        let a = shortcut.area.clamped(columns: columns, rows: rows)
+        let a = shortcut.area(in: grid)
         func range(_ start: Int, _ span: Int) -> String {
             span == 1 ? "\(start + 1)" : "\(start + 1)–\(start + span)"
         }
@@ -270,7 +279,7 @@ private struct EnlargedGridEditor: View {
             }
             .monospacedDigit()
 
-            GridPicker(area: $shortcut.area, columns: columns, rows: rows)
+            GridPicker(area: area, columns: columns, rows: rows)
                 .aspectRatio(aspectRatio, contentMode: .fit)
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
 

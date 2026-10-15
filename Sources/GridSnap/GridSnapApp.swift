@@ -58,7 +58,7 @@ struct MenuContent: View {
                     Text(shortcut.name)
                 } icon: {
                     Image(nsImage: GridIcon.image(
-                        for: store.clampedArea(shortcut),
+                        for: store.area(for: shortcut),
                         columns: store.grid(for: shortcut).columns,
                         rows: store.grid(for: shortcut).rows
                     ))
