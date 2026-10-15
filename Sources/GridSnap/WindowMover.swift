@@ -2,7 +2,7 @@ import AppKit
 import ApplicationServices
 import os
 
-let log = Logger(subsystem: "local.gridsnap.GridSnap", category: "move")
+let log = Logger(subsystem: "com.benwellby.gridsnap", category: "move")
 
 enum WindowMover {
     /// The last non-GridSnap app to be active, used when GridSnap itself is frontmost
@@ -36,8 +36,16 @@ enum WindowMover {
         }
 
         let axApp = AXUIElementCreateApplication(app.processIdentifier)
-        guard let window = focusedWindow(of: axApp), let current = frame(of: window) else {
-            log.error("No focused window for \(app.bundleIdentifier ?? "?", privacy: .public)")
+        // Don't hang on an unresponsive app.
+        AXUIElementSetMessagingTimeout(axApp, 1)
+        let appName = app.bundleIdentifier ?? app.localizedName ?? "?"
+
+        guard let window = focusedWindow(of: axApp, appName: appName) else {
+            NSSound.beep()
+            return
+        }
+        guard let current = frame(of: window) else {
+            log.error("Couldn't read the window frame for \(appName, privacy: .public)")
             NSSound.beep()
             return
         }
@@ -60,6 +68,14 @@ enum WindowMover {
         setSize(window, target.size)
 
         if wasEnhanced { AXUIElementSetAttributeValue(axApp, enhancedUI, kCFBooleanTrue) }
+
+        // Some apps limit window sizes (e.g. a minimum size, or Preview keeping a
+        // document's proportions). Log when the result differs from what was asked.
+        if let result = frame(of: window),
+           abs(result.minX - target.minX) > 2 || abs(result.minY - target.minY) > 2 ||
+           abs(result.width - target.width) > 2 || abs(result.height - target.height) > 2 {
+            log.notice("\(appName, privacy: .public) constrained the window: asked for \(String(describing: target), privacy: .public), got \(String(describing: result), privacy: .public)")
+        }
     }
 
     private static func targetApp() -> NSRunningApplication? {
@@ -69,11 +85,43 @@ enum WindowMover {
         return lastExternalApp
     }
 
-    private static func focusedWindow(of app: AXUIElement) -> AXUIElement? {
+    /// The window to move: the focused window, else the main window, else the first window.
+    ///
+    /// Electron and Chromium apps (Figma, Todoist, Slack…) only build their
+    /// accessibility tree once asked via `AXManualAccessibility`, so if nothing is
+    /// found, ask and retry briefly. The flag sticks, so this only costs time once.
+    private static func focusedWindow(of app: AXUIElement, appName: String) -> AXUIElement? {
+        if let window = findWindow(in: app) { return window }
+
+        let manual = AXUIElementSetAttributeValue(app, "AXManualAccessibility" as CFString, kCFBooleanTrue)
+        for _ in 0..<5 {
+            usleep(40_000)
+            if let window = findWindow(in: app) {
+                log.notice("Found window for \(appName, privacy: .public) after enabling AXManualAccessibility")
+                return window
+            }
+        }
+
         var value: CFTypeRef?
-        guard AXUIElementCopyAttributeValue(app, kAXFocusedWindowAttribute as CFString, &value) == .success,
-              let value, CFGetTypeID(value) == AXUIElementGetTypeID() else { return nil }
-        return (value as! AXUIElement)
+        let error = AXUIElementCopyAttributeValue(app, kAXFocusedWindowAttribute as CFString, &value)
+        log.error("No window found for \(appName, privacy: .public) (focused window error \(error.rawValue, privacy: .public), AXManualAccessibility \(manual.rawValue, privacy: .public))")
+        return nil
+    }
+
+    private static func findWindow(in app: AXUIElement) -> AXUIElement? {
+        for attribute in [kAXFocusedWindowAttribute, kAXMainWindowAttribute] {
+            var value: CFTypeRef?
+            if AXUIElementCopyAttributeValue(app, attribute as CFString, &value) == .success,
+               let value, CFGetTypeID(value) == AXUIElementGetTypeID() {
+                return (value as! AXUIElement)
+            }
+        }
+        var windows: CFTypeRef?
+        if AXUIElementCopyAttributeValue(app, kAXWindowsAttribute as CFString, &windows) == .success,
+           let first = (windows as? [AXUIElement])?.first {
+            return first
+        }
+        return nil
     }
 
     private static func frame(of window: AXUIElement) -> CGRect? {

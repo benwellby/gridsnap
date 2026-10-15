@@ -1,0 +1,32 @@
+Installing GridSnap
+===================
+
+1. Drag GridSnap into the Applications folder (in this window).
+
+2. Open GridSnap from Applications.
+   macOS will say it can't verify the developer. That's expected: GridSnap
+   isn't distributed through Apple. Click "Done" (not "Move to Bin").
+
+3. Open System Settings > Privacy & Security, scroll down to the
+   "Security" section and click "Open Anyway" next to GridSnap.
+   Confirm with your password or Touch ID, then click "Open Anyway" again.
+
+   You only need to do this once.
+
+4. GridSnap will ask for Accessibility access, which it needs to move
+   windows. Click "Open System Settings" and turn GridSnap on.
+
+That's it. GridSnap lives in the menu bar (the grid icon at the top right
+of your screen). Click it and choose "Settings…" to set up your grid and
+shortcuts.
+
+Default shortcuts (Control + Option + ...):
+  ←  Left half        →  Right half
+  U  Top left         I  Top right
+  J  Bottom left      K  Bottom right
+  C  Centre           ↩  Maximise
+
+Control + Option + Command + H turns Dim Background on and off.
+
+Updating: quit GridSnap from its menu, then drag the new version into
+Applications and replace the old one. You shouldn't need to grant access again.

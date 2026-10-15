@@ -2,7 +2,7 @@ import AppKit
 import ApplicationServices
 import os
 
-private let dimLog = Logger(subsystem: "local.gridsnap.GridSnap", category: "dim")
+private let dimLog = Logger(subsystem: "com.benwellby.gridsnap", category: "dim")
 
 /// Private but long-stable API (used by most window managers) mapping an
 /// Accessibility window to its window-server id.
@@ -35,6 +35,7 @@ final class Dimmer {
     private var axObserver: AXObserver?
     private var fallbackTimer: Timer?
     private var lastTarget: Int?
+    private var pendingHide: DispatchWorkItem?
 
     func update(enabled: Bool, opacity: Double) {
         self.opacity = CGFloat(opacity)
@@ -78,6 +79,7 @@ final class Dimmer {
         removeAXObserver()
         fallbackTimer?.invalidate()
         fallbackTimer = nil
+        cancelPendingHide()
         hide()
     }
 
@@ -145,15 +147,12 @@ final class Dimmer {
         })
     }
 
-    /// Pull overlays off any Space that's no longer showing; the refresh orders them
-    /// onto the new one. Overlays on displays whose Space didn't change are left
-    /// alone so they don't flicker.
+    /// Re-stack the overlays after a Space switch. Ordering an overlay below the
+    /// focused window also moves it onto the active Space (`moveToActiveSpace`), so
+    /// there's no need to take overlays down first. Doing that made displays whose
+    /// Space didn't change flash off and on.
     private func spaceDidChange() {
         dimLog.notice("Space changed; frontmost: \(NSWorkspace.shared.frontmostApplication?.localizedName ?? "-", privacy: .public)")
-        for overlay in overlays where !overlay.window.isOnActiveSpace {
-            overlay.window.alphaValue = 0
-            overlay.window.orderOut(nil)
-        }
         scheduleRefresh()
     }
 
@@ -174,12 +173,33 @@ final class Dimmer {
                 dimLog.notice("Dim below window \(target.number, privacy: .public) of \(app, privacy: .public) (\(source, privacy: .public)\(target.fullScreen ? ", full screen" : "", privacy: .public))")
                 lastTarget = target.number
             }
+            cancelPendingHide()
             show(target)
         } else {
-            if lastTarget != nil { dimLog.notice("No focused window for \(app, privacy: .public); hiding") }
+            if lastTarget != nil { dimLog.notice("No focused window for \(app, privacy: .public); hiding soon") }
             lastTarget = nil
-            hide()
+            scheduleHide()
         }
+    }
+
+    /// Hides after a short grace period. During a Space switch macOS briefly reports
+    /// the previous app as active while its window is already off screen; hiding
+    /// straight away would make the other display's dimming flash off and on.
+    private func scheduleHide() {
+        guard pendingHide == nil else { return }
+        let work = DispatchWorkItem { [weak self] in
+            guard let self else { return }
+            self.pendingHide = nil
+            // Re-check in case focus settled while we waited.
+            if self.enabled, self.frontWindow() == nil { self.hide() }
+        }
+        pendingHide = work
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.4, execute: work)
+    }
+
+    private func cancelPendingHide() {
+        pendingHide?.cancel()
+        pendingHide = nil
     }
 
     /// The active app's focused window, if it's visible on screen.

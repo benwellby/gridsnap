@@ -4,13 +4,19 @@ set -euo pipefail
 cd "$(dirname "$0")"
 
 APP=GridSnap
-swift build -c release
-BIN="$(swift build -c release --show-bin-path)/$APP"
+
+# Build for Apple silicon and Intel, then merge into one universal binary.
+BINS=()
+for ARCH in arm64 x86_64; do
+    TRIPLE="$ARCH-apple-macosx15.0"
+    swift build -c release --triple "$TRIPLE"
+    BINS+=("$(swift build -c release --triple "$TRIPLE" --show-bin-path)/$APP")
+done
 
 BUNDLE="build/$APP.app"
 rm -rf "$BUNDLE"
 mkdir -p "$BUNDLE/Contents/MacOS" "$BUNDLE/Contents/Resources"
-cp "$BIN" "$BUNDLE/Contents/MacOS/$APP"
+lipo -create "${BINS[@]}" -output "$BUNDLE/Contents/MacOS/$APP"
 cp Resources/Info.plist "$BUNDLE/Contents/Info.plist"
 cp Resources/AppIcon.icns "$BUNDLE/Contents/Resources/AppIcon.icns"
 
