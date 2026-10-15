@@ -179,6 +179,16 @@ GridSnap is self-signed rather than notarised by Apple, so the first time someon
 it, macOS blocks it. They then need to click **Open Anyway** in **System Settings →
 Privacy & Security**. The install guide walks them through this.
 
+To publish a GitHub release, bump the version, commit, then run:
+
+```bash
+./release.sh "What's new in this version"
+```
+
+This packages the app, tags the commit, pushes it, and creates the release with
+`GridSnap.dmg` attached. It requires the GitHub CLI (`gh`). The download link in this
+README always points to the newest release.
+
 Always sign releases with the same **GridSnap Developer** certificate. That way, people
 who update keep their Accessibility permission. Back the certificate up by exporting it
 from Keychain Access as a `.p12` file. If it's lost, everyone will have to grant access
