@@ -42,8 +42,8 @@ final class Store: ObservableObject {
             dimOpacity = saved.dim?.opacity ?? 0.5
             dimHotKey = saved.dim == nil ? HotKey.defaultDimToggle : saved.dim?.hotKey
         } else {
-            columns = 4
-            rows = 2
+            columns = 16
+            rows = 16
             shortcuts = Self.defaultShortcuts
             dimEnabled = false
             dimOpacity = 0.5
@@ -110,18 +110,20 @@ final class Store: ObservableObject {
         shortcuts.removeAll { $0.id == id }
     }
 
-    // Defaults for a 4 × 2 grid, using ⌃⌥ to avoid clashing with common app shortcuts.
+    // Defaults for a 16 × 16 grid, all on ⌥⌘. The corners and full screen use their
+    // own simpler grids; the centred layouts use the fine 16 × 16 grid.
     private static let defaultShortcuts: [Shortcut] = {
-        func hk(_ code: UInt32, _ key: String) -> HotKey { HotKey(keyCode: code, modifiers: HotKey.ctrlOpt, key: key) }
+        func hk(_ code: UInt32, _ key: String) -> HotKey { HotKey(keyCode: code, modifiers: HotKey.optCmd, key: key) }
+        let quarters = GridSize(columns: 2, rows: 2)
         return [
-            Shortcut(name: "Left Half", area: GridArea(col: 0, row: 0, colSpan: 2, rowSpan: 2), hotKey: hk(123, "←")),
-            Shortcut(name: "Right Half", area: GridArea(col: 2, row: 0, colSpan: 2, rowSpan: 2), hotKey: hk(124, "→")),
-            Shortcut(name: "Top Left", area: GridArea(col: 0, row: 0, colSpan: 2, rowSpan: 1), hotKey: hk(32, "U")),
-            Shortcut(name: "Top Right", area: GridArea(col: 2, row: 0, colSpan: 2, rowSpan: 1), hotKey: hk(34, "I")),
-            Shortcut(name: "Bottom Left", area: GridArea(col: 0, row: 1, colSpan: 2, rowSpan: 1), hotKey: hk(38, "J")),
-            Shortcut(name: "Bottom Right", area: GridArea(col: 2, row: 1, colSpan: 2, rowSpan: 1), hotKey: hk(40, "K")),
-            Shortcut(name: "Centre", area: GridArea(col: 1, row: 0, colSpan: 2, rowSpan: 2), hotKey: hk(8, "C")),
-            Shortcut(name: "Maximise", area: GridArea(col: 0, row: 0, colSpan: 4, rowSpan: 2), hotKey: hk(36, "↩")),
+            Shortcut(name: "Top Left", area: GridArea(col: 0, row: 0, colSpan: 1, rowSpan: 1), hotKey: hk(18, "1"), grid: quarters),
+            Shortcut(name: "Top Right", area: GridArea(col: 1, row: 0, colSpan: 1, rowSpan: 1), hotKey: hk(19, "2"), grid: quarters),
+            Shortcut(name: "Bottom Right", area: GridArea(col: 1, row: 1, colSpan: 1, rowSpan: 1), hotKey: hk(20, "3"), grid: quarters),
+            Shortcut(name: "Bottom Left", area: GridArea(col: 0, row: 1, colSpan: 1, rowSpan: 1), hotKey: hk(21, "4"), grid: quarters),
+            Shortcut(name: "Centre", area: GridArea(col: 3, row: 2, colSpan: 10, rowSpan: 12), hotKey: hk(23, "5")),
+            Shortcut(name: "Centre full", area: GridArea(col: 3, row: 0, colSpan: 10, rowSpan: 16), hotKey: hk(22, "6")),
+            Shortcut(name: "Full screen", area: GridArea(col: 0, row: 0, colSpan: 1, rowSpan: 1), hotKey: hk(14, "E"),
+                     grid: GridSize(columns: 1, rows: 1)),
         ]
     }()
 }

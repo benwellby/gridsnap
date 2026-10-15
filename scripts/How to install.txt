@@ -20,11 +20,11 @@ That's it. GridSnap lives in the menu bar (the grid icon at the top right
 of your screen). Click it and choose "Settings…" to set up your grid and
 shortcuts.
 
-Default shortcuts (Control + Option + ...):
-  ←  Left half        →  Right half
-  U  Top left         I  Top right
-  J  Bottom left      K  Bottom right
-  C  Centre           ↩  Maximise
+Default shortcuts (Option + Command + ...):
+  1  Top left         2  Top right
+  4  Bottom left      3  Bottom right
+  5  Centre           6  Centre, full height
+  E  Full screen
 
 Control + Option + Command + H turns Dim Background on and off.
 

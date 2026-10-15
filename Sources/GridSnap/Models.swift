@@ -88,7 +88,7 @@ struct HotKey: Codable, Equatable, Hashable {
         return (event.characters(byApplyingModifiers: []) ?? "?").uppercased()
     }
 
-    static let ctrlOpt: UInt = NSEvent.ModifierFlags([.control, .option]).rawValue
+    static let optCmd: UInt = NSEvent.ModifierFlags([.option, .command]).rawValue
 
     /// ⌃⌥⌘H
     static let defaultDimToggle = HotKey(

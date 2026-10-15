@@ -50,7 +50,7 @@ step-by-step install guide.
 - **Conflict warnings:** see at a glance when a hotkey is used twice or already taken by
   macOS or another app.
 - **Type or step:** enter grid sizes directly or use the arrows.
-- **Sensible defaults:** halves, quarters, centre and maximise are ready to go on first launch.
+- **Ready-made layouts:** quarters, two centred layouts and full screen are set up on ⌥⌘1–6 and ⌥⌘E from first launch.
 
 ### Dim Background
 - **Focus mode:** dims every window except the one you're working in.
@@ -142,10 +142,22 @@ step-by-step install guide.
 
 | Setting | Range | Default |
 |---|---|---|
-| Grid columns / rows | 1–16 | 4 × 2 |
+| Grid columns / rows | 1–16 | 16 × 16 |
 | Dim opacity | 10–90% | 50% |
 | Dim toggle hotkey | Any combination with ⌘, ⌥ or ⌃ | ⌃⌥⌘H |
-| Shortcut hotkeys | Any combination with ⌘, ⌥ or ⌃ | ⌃⌥ + ← → U I J K C ↩ |
+| Shortcut hotkeys | Any combination with ⌘, ⌥ or ⌃ | ⌥⌘ + 1–6, E (see below) |
+
+### Default shortcuts
+
+| Hotkey | Layout | Grid |
+|---|---|---|
+| ⌥⌘1 | Top left quarter | Own 2 × 2 |
+| ⌥⌘2 | Top right quarter | Own 2 × 2 |
+| ⌥⌘3 | Bottom right quarter | Own 2 × 2 |
+| ⌥⌘4 | Bottom left quarter | Own 2 × 2 |
+| ⌥⌘5 | Centre: middle 10 columns, rows 3–14 | 16 × 16 |
+| ⌥⌘6 | Centre full: middle 10 columns, full height | 16 × 16 |
+| ⌥⌘E | Full screen | Own 1 × 1 |
 
 ---
 
